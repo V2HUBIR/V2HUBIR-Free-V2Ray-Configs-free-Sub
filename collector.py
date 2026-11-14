@@ -14,7 +14,7 @@ TG_SOURCES = [
     "Outline_Vpn", "v2nodes", "SPARTAN_YT", "BigSmoke_Config", "FarazV2ray"
 ]
 
-# لینک لیست کانال‌های تلگرام خارجی (پشتیبانی از لینک معمولی و Raw گیت‌هاب)
+# لینک لیست کانال‌های تلگرام خارجی
 EXTERNAL_TG_LISTS = [
     "https://raw.githubusercontent.com/coldwater-10/V2rayCollector/main/channels.txt"
 ]
@@ -74,19 +74,17 @@ def extract(text):
 
 def get_all_tg_channels():
     channels = list(TG_SOURCES)
+    bad_words = {"https", "http", "telegram", "channel", "channels", "main", "master"}
     for url in EXTERNAL_TG_LISTS:
         raw_url = url.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/")
         try:
             r = requests.get(raw_url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
             if r.status_code == 200:
-                for line in r.text.splitlines():
-                    line = line.strip()
-                    if not line or line.startswith("#"):
-                        continue
-                    line = re.sub(r"^(?:https?://)?t\.me/(?:s/)?", "", line)
-                    line = line.lstrip("@").split("/")[0].split("?")[0].strip()
-                    if line and re.match(r"^[a-zA-Z0-9_]{4,32}$", line):
-                        channels.append(line)
+                text = re.sub(r"https?://t\.me/(?:s/)?", " ", r.text)
+                tokens = re.findall(r"[a-zA-Z0-9_]{5,32}", text)
+                for t in tokens:
+                    if t.lower() not in bad_words and not t.isdigit():
+                        channels.append(t)
         except Exception:
             pass
     return list(dict.fromkeys(channels))
