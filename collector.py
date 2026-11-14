@@ -6,6 +6,7 @@ import requests
 TARGET_CONFIGS = 200
 CONNECT_TIMEOUT = 4
 
+# لیست کانال‌های تلگرام پایه
 TG_SOURCES = [
     "SOSkeyNET", "ConfigsHUB", "FarahVPN", "Farah_VPN", "ConfigsHUB2",
     "ConfigX2ray", "v2ray1_ng", "AarazV2ray", "V2rayBaaz", "V2rayEnglish",
@@ -13,6 +14,12 @@ TG_SOURCES = [
     "Outline_Vpn", "v2nodes", "SPARTAN_YT", "BigSmoke_Config", "FarazV2ray"
 ]
 
+# لینک لیست کانال‌های تلگرام خارجی (پشتیبانی از لینک معمولی و Raw گیت‌هاب)
+EXTERNAL_TG_LISTS = [
+    "https://raw.githubusercontent.com/coldwater-10/V2rayCollector/main/channels.txt"
+]
+
+# منابع مستقیم گیت‌هاب و ساب‌لینک‌ها
 GITHUB_SOURCES = [
     "https://v2freehub-sub.v2freehub.workers.dev/",
     "https://sub.vlessfo.ru/vlessforu/working_configs.txt",
@@ -64,6 +71,25 @@ def extract(text):
             res = URI_RE.findall(html.unescape(decoded))
         except Exception: pass
     return res
+
+def get_all_tg_channels():
+    channels = list(TG_SOURCES)
+    for url in EXTERNAL_TG_LISTS:
+        raw_url = url.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/")
+        try:
+            r = requests.get(raw_url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+            if r.status_code == 200:
+                for line in r.text.splitlines():
+                    line = line.strip()
+                    if not line or line.startswith("#"):
+                        continue
+                    line = re.sub(r"^(?:https?://)?t\.me/(?:s/)?", "", line)
+                    line = line.lstrip("@").split("/")[0].split("?")[0].strip()
+                    if line and re.match(r"^[a-zA-Z0-9_]{4,32}$", line):
+                        channels.append(line)
+        except Exception:
+            pass
+    return list(dict.fromkeys(channels))
 
 def fetch_url(url):
     try:
@@ -117,9 +143,12 @@ def rename_uri(uri, idx, ping):
     except: return uri
 
 if __name__ == "__main__":
+    all_tg_channels = get_all_tg_channels()
+    print(f"Collecting from {len(all_tg_channels)} Telegram channels and {len(GITHUB_SOURCES)} GitHub sources...")
+    
     pool = []
-    with ThreadPoolExecutor(max_workers=20) as ex:
-        for res in ex.map(fetch_tg, TG_SOURCES): pool += res
+    with ThreadPoolExecutor(max_workers=30) as ex:
+        for res in ex.map(fetch_tg, all_tg_channels): pool += res
         for res in ex.map(fetch_url, GITHUB_SOURCES): pool += res
 
     unique_map = {}
