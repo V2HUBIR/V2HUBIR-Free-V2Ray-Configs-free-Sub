@@ -1,0 +1,34 @@
+name: Auto Update V2Ray Subscription
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run Collector Script
+        run: python collector.py
+
+      - name: Commit and Push updated configs
+        run: |
+          git config --global user.name "V2HUBIR AutoBot"
+          git config --global user.email "bot@v2hubir.com"
+          git add sub.txt sub_base64.txt
+          git diff --quiet && git diff --staged --quiet || (git commit -m "⚡ Auto-update 200 configs [Skip CI]" && git push)
